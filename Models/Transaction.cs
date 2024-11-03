@@ -17,5 +17,9 @@ namespace FinancialTransactionsAPI.Models
         public string CustomerPhoneNumber { get; set; }
         public string CustomerAddress { get; set; }
         public string CustomerEmailAddress { get; set; }
+
+        // Foreign key reference to Customer
+        public int CustomerId { get; set; }
+        public Customer Customer { get; set; }
     }
 }

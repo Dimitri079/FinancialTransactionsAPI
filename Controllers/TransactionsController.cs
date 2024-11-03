@@ -3,6 +3,9 @@ using FinancialTransactionsAPI.Enums;
 using FinancialTransactionsAPI.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace FinancialTransactionsAPI.Controllers
 {
@@ -30,28 +33,57 @@ namespace FinancialTransactionsAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Transaction>>> GetAllTransactions(
             [FromQuery] TransactionStatus? status = null,
-            [FromQuery] TransactionType? type = null)
+            [FromQuery] TransactionType? type = null,
+            [FromQuery] string? customerName = null,
+            [FromQuery] DateTime? date = null,
+            [FromQuery] decimal? amount = null)
         {
-            var transactions = _context.Transactions.AsQueryable();
+            var query = _context.Transactions
+                .Include(t => t.Customer)
+                .ThenInclude(c => c.PhoneNumbers)
+                .Include(t => t.Customer.EmailAddresses)
+                .Include(t => t.Customer.Addresses)
+                .AsQueryable();
 
             if (status.HasValue)
             {
-                transactions = transactions.Where(t => t.Status == status.Value);
+                query = query.Where(t => t.Status == status.Value);
             }
 
             if (type.HasValue)
             {
-                transactions = transactions.Where(t => t.TransactionType == type.Value);
+                query = query.Where(t => t.TransactionType == type.Value);
             }
 
-            return await transactions.ToListAsync();
+            if (!string.IsNullOrEmpty(customerName))
+            {
+                query = query.Where(t => t.Customer.FullName.Contains(customerName));
+            }
+
+            if (date.HasValue)
+            {
+                query = query.Where(t => t.TransactionDate.Date == date.Value.Date);
+            }
+
+            if (amount.HasValue)
+            {
+                query = query.Where(t => t.Amount == amount.Value);
+            }
+
+            var transactions = await query.ToListAsync();
+            return Ok(transactions);
         }
 
         // GET: api/transactions/{id} - Get a Transaction by ID
         [HttpGet("{id}")]
         public async Task<ActionResult<Transaction>> GetTransactionById(int id)
         {
-            var transaction = await _context.Transactions.FindAsync(id);
+            var transaction = await _context.Transactions
+                .Include(t => t.Customer)
+                .ThenInclude(c => c.PhoneNumbers)
+                .Include(t => t.Customer.EmailAddresses)
+                .Include(t => t.Customer.Addresses)
+                .FirstOrDefaultAsync(t => t.TransactionId == id);
 
             if (transaction == null)
             {
@@ -115,7 +147,7 @@ namespace FinancialTransactionsAPI.Controllers
 
             if (!string.IsNullOrEmpty(customerName))
             {
-                transactions = transactions.Where(t => t.CustomerFullName == customerName);
+                transactions = transactions.Where(t => t.Customer.FullName.Contains(customerName));
             }
 
             var totalCredits = await transactions.Where(t => t.TransactionType == TransactionType.Credit).SumAsync(t => t.Amount);

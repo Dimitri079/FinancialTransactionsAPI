@@ -2,15 +2,15 @@
 {
     public enum TransactionType
     {
-        Debit,
-        Credit
+        Credit = 1,
+        Debit = 2
     }
 
     public enum TransactionStatus
     {
-        Successful, 
-        Failed,
-        Voided
+        Successful = 1,
+        Failed = 2,
+        Voided = 3
     }
 
 }
